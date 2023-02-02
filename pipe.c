@@ -5,7 +5,7 @@
 #include <sys/wait.h>
 int main(int argc, char *argv[])
 {
-  if(argc==1){
+  if(argc<=1){
     return EINVAL;
   }
   if(argc==2){
@@ -40,6 +40,7 @@ int main(int argc, char *argv[])
 	if(execlp(argv[i],argv[i],NULL)<0){
 	  return errno;
 	}
+	exit(1);
       }
       else{
 	dup2(fds[0],STDIN_FILENO);
@@ -63,13 +64,15 @@ int main(int argc, char *argv[])
       int status=0;
       for(int i=0; i<argc-1; i++){
 	waitpid(pids[i],&status,0);
+	if(!WIFEXITED(status)){
+	  return ECHILD;
+	}
 	if(WEXITSTATUS(status)!=0){
 	  return WEXITSTATUS(status);
 	}
       }
     }
-    
+    free(pids);
   }
-  
   return 0;
 }
