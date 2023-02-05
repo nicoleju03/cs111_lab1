@@ -27,7 +27,6 @@ int main(int argc, char *argv[])
   }
   else{
     int fds[2];
-    int* pids = (int*)malloc(sizeof(int)*(argc-1));
     int i=1;
     while(i<argc-1){
       if(pipe(fds)<0) return errno;
@@ -43,10 +42,17 @@ int main(int argc, char *argv[])
 	exit(1);
       }
       else{
+	int status=0;
+	waitpid(ret,&status,0);
+	if(!WIFEXITED(status)){//if child terminates wrong
+	  return ECHILD;
+	}
+	if(WEXITSTATUS(status)!=0){//if child returns an error
+	  return WEXITSTATUS(status);
+	}
 	dup2(fds[0],STDIN_FILENO);
 	close(fds[0]);
 	close(fds[1]);
-	pids[i-1]=ret;
       }
       i++;
     }
@@ -58,21 +64,17 @@ int main(int argc, char *argv[])
       }
     }
     else{
+      int status = 0;
+      waitpid(ret2,&status,0);
+      if(!WIFEXITED(status)){//if child terminates wrong
+	return ECHILD;
+      }
+      if(WEXITSTATUS(status)!=0){//if child returns an error
+	return WEXITSTATUS(status);
+      }
       close(fds[0]);
       close(fds[1]);
-      pids[argc-1]=ret2;
-      int status=0;
-      for(int i=0; i<argc-1; i++){
-	waitpid(pids[i],&status,0);
-	if(!WIFEXITED(status)){
-	  return ECHILD;
-	}
-	if(WEXITSTATUS(status)!=0){
-	  return WEXITSTATUS(status);
-	}
-      }
     }
-    free(pids);
   }
   return 0;
 }
